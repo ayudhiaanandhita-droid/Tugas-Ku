@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusFlow - Daftar Tugas & Manajemen Waktu</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 450px;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 26px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: #667eea;
+        }
+
+        .options-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        select {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            background-color: white;
+        }
+
+        button.btn-add {
+            background-color: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button.btn-add:hover {
+            background-color: #5a67d8;
+        }
+
+        .task-list {
+            list-style: none;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            background-color: #f8fafc;
+            border-left: 5px solid #cbd5e1;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.2s;
+        }
+
+        .task-item.priority-Tinggi { border-left-color: #ef4444; }
+        .task-item.priority-Sedang { border-left-color: #f59e0b; }
+        .task-item.priority-Rendah { border-left-color: #10b981; }
+
+        .task-text {
+            font-size: 15px;
+            color: #334155;
+            word-break: break-word;
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+
+        .btn-delete {
+            background: none;
+            border: none;
+            color: #ef4444;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            margin-left: 10px;
+            padding: 0 5px;
+        }
+
+        .btn-delete:hover {
+            color: #dc2626;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>FocusFlow 🎯</h1>
+            <p>Kelola tugas dan waktumu dengan rapi</p>
+        </div>
+
+        <div class="input-group">
+            <input type="text" id="taskInput" placeholder="Ketik tugas baru di sini..." onkeypress="handleKeyPress(event)">
+            <div class="options-row">
+                <select id="priorityInput">
+                    <option value="Rendah">Prioritas: Rendah</option>
+                    <option value="Sedang" selected>Prioritas: Sedang</option>
+                    <option value="Tinggi">Prioritas: Tinggi</option>
+                </select>
+                <button class="btn-add" onclick="addTask()">Tambah</button>
+            </div>
+        </div>
+
+        <ul class="task-list" id="taskList"></ul>
+        <div class="empty-state" id="emptyState">Belum ada tugas. Yuk, tambahkan sekarang!</div>
+    </div>
+
+    <script>
+        // Load tugas dari LocalStorage saat halaman dibuka
+        document.addEventListener('DOMContentLoaded', loadTasks);
+
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const priorityInput = document.getElementById('priorityInput');
+            const taskText = taskInput.value.trim();
+
+            if (taskText === '') {
+                alert('Tugas tidak boleh kosong!');
+                return;
+            }
+
+            const task = {
+                id: Date.now(),
+                text: taskText,
+                priority: priorityInput.value,
+                completed: false
+            };
+
+            saveTaskToStorage(task);
+            renderTask(task);
+
+            taskInput.value = '';
+            checkEmptyState();
+        }
+
+        function renderTask(task) {
+            const taskList = document.getElementById('taskList');
+            const li = document.createElement('li');
+            li.className = `task-item priority-${task.priority} ${task.completed ? 'completed' : ''}`;
+            li.setAttribute('data-id', task.id);
+
+            li.innerHTML = `
+                <span class="task-text" onclick="toggleTask(${task.id})">${task.text}</span>
+                <button class="btn-delete" onclick="deleteTask(${task.id})">&times;</button>
+            `;
+
+            taskList.appendChild(li);
+            checkEmptyState();
+        }
+
+        function toggleTask(id) {
+            let tasks = getTasksFromStorage();
+            tasks = tasks.map(task => {
+                if (task.id === id) {
+                    task.completed = !task.completed;
+                }
+                return task;
+            });
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+
+            const li = document.querySelector(`[data-id="${id}"]`);
+            if (li) {
+                li.classList.toggle('completed');
+            }
+        }
+
+        function deleteTask(id) {
+            let tasks = getTasksFromStorage();
+            tasks = tasks.filter(task => task.id !== id);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+
+            const li = document.querySelector(`[data-id="${id}"]`);
+            if (li) {
+                li.remove();
+            }
+            checkEmptyState();
+        }
+
+        function saveTaskToStorage(task) {
+            const tasks = getTasksFromStorage();
+            tasks.push(task);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        function getTasksFromStorage() {
+            return localStorage.getItem('tasks') ? JSON.parse(localStorage.getItem('tasks')) : [];
+        }
+
+        function loadTasks() {
+            const tasks = getTasksFromStorage();
+            tasks.forEach(task => renderTask(task));
+            checkEmptyState();
+        }
+
+        function checkEmptyState() {
+            const taskList = document.getElementById('taskList');
+            const emptyState = document.getElementById('emptyState');
+            if (taskList.children.length === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                addTask();
+            }
+        }
+    </script>
+</body>
+</html>
